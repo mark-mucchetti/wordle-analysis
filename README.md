@@ -14,6 +14,22 @@ This script runs only in interactive mode, asking you for your guess and for Wor
 - Y for yellow squares
 - X (or any other character) for not matched
 
+Sample run:
+
+```
+INFO:root:Loaded 178691 words
+Guess : AEGIS
+Result: XYGYX
+INFO:root:Wordlist filtered from 178691 to 7 word(s).
+INFO:root:['EIGHT\n', 'GIGHE\n', 'GIGUE\n', 'IGGED\n', 'INGLE\n', 'LIGER\n', 'TIGER\n']
+INFO:root:Try EIGHT
+
+Guess : EIGHT
+Result: YGGXY
+INFO:root:Wordlist filtered from 7 to 1 word(s).
+INFO:root:The answer is TIGER
+```
+
 It's not really intended for helping you cheat at Wordle. Although you could certainly use it for that, I am more interested in the meta-analysis of the game, answering the following sorts of questions:
 
 - How "good" is a given guess against the current word? Against all Wordle words? Against any English word?
