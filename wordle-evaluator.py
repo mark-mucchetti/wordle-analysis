@@ -26,8 +26,44 @@ wordList = []
 logging.basicConfig(stream=sys.stderr, level=logging.INFO)
 
 def loadFile():
-    file = open("dictionary.txt", "r")
+    #file = open("dictionary.txt", "r")
+    file = open("dict-5.txt", "r")
     return file.readlines()
+
+def getEmoji(c):
+    c = c.replace("G", "🟩")
+    c = c.replace("Y", "🟨")   
+    c = c.replace("X", "⬜")
+    return c
+
+def guessAll(wordList):
+    file = open("results.csv", "w")
+    for w in wordList:
+        w = w.strip()
+        guessCount = guessSequence(w)
+        file.write(w + "," + str(guessCount) + "\n")
+        logging.info("Guessed word %s in %d guesses.", w, guessCount)
+
+
+def guessSequence(answer):
+
+    frequencyTable = {}
+    exactMatches = exactMatches = emptyExactMatches(len(answer))
+    currentList = wordList
+    maxGuesses = 20
+    guessCount = 0
+    guess = ""
+    
+    while guessCount < maxGuesses and guess != answer:
+        guess = runStrategy(frequencyTable, exactMatches, currentList)
+        result = processGuess(guess, answer)
+        logging.debug( answer + " | " + guess + " -> " + str(getEmoji(result)))
+        guessCount += 1
+
+        (frequencyTable, exactMatches) = updateFrequencyTable(frequencyTable, exactMatches, guess, result)
+        currentList = filterWords(frequencyTable, exactMatches, currentList)
+    
+    return guessCount
 
 def runSequence(history):
     pass
@@ -48,7 +84,7 @@ def filterWords(frequencyTable, exactMatches, currentList):
                 success = False
                 break
         if success:
-            currentList.append(word)
+            currentList.append(word.strip())
 
     return currentList
 
@@ -78,7 +114,31 @@ def updateFrequencyTable(frequencyTable, exactMatches, guess, result):
     return (frequencyTable, exactMatches)
 
 def processGuess(guess, answer):
-    pass
+
+    resultList = []
+    for j in range(0, len(answer)): resultList.append("X")
+
+    for j in range(0, len(answer)):
+        #logging.debug(answer[j] + " -> " + guess[j])
+        #logging.debug(guess.count(answer[j]))
+        if answer[j] == guess[j]:
+            resultList[j] = "G"
+        elif guess.count(answer[j]) > 0:
+            res = [i for i in range(len(guess)) if guess.startswith(answer[j], i)]
+            # r is all indexes of the guess that match this letter in any position
+            # we only want to update positions that are not "G", but we always want to go
+            # until we find any to make them "Y"
+            max = answer.count(answer[j])
+            for r in res:
+                i = guess[r]
+                if resultList[r] != "G": 
+                    resultList[r] = "Y"
+                max -= 1
+                if max == 0: break
+                        
+        #logging.debug("".join(resultList))
+
+    return "".join(resultList)
 
 class ValidationError(Exception):
     pass
@@ -114,7 +174,7 @@ def buildExactMatchesRegex(exactMatches):
 
 def runStrategy(frequencyTable, exactMatches, currentList):
     if (len(currentList) > 0):
-        return currentList[0]
+        return currentList[0].strip()
     else:
         raise ValidationError("No words left to suggest.")
 
@@ -176,5 +236,16 @@ def interactiveGame(wordList):
 wordList = loadFile()
 logging.info('Loaded %d words', len(wordList))
 
-interactiveGame(wordList)
+# uncomment to play directly
+#interactiveGame(wordList)
+
+# uncomment to run the entire wordlist into a file
+#guessAll(wordList)
+
+# uncomment to look at a single word
+logging.getLogger().setLevel(logging.DEBUG)
+w = "CAVES"
+guessCount = guessSequence(w)
+logging.info("Guessed word %s in %d guesses.", w, guessCount)
+
 
