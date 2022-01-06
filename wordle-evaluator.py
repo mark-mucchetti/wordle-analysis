@@ -1,5 +1,5 @@
 # Wordle Evaluator
-# Copyright (c) 2021 Mark Mucchetti
+# Copyright (c) 2022 Mark Mucchetti
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
 # in the Software without restriction, including without limitation the rights
@@ -25,6 +25,20 @@ wordList = []
 # logging configuration
 logging.basicConfig(stream=sys.stderr, level=logging.INFO)
 
+def runStrategy(frequencyTable, exactMatches, currentList, strat="FIRST"):
+
+    if (len(currentList) == 0):
+        raise ValidationError("No words left to suggest.")
+
+    if strat == "FIRST":
+        return currentList[0].strip()
+
+    if strat == "LAST":
+        return currentList[-1].strip()
+
+    if strat == "MID":
+        return currentList[len(currentList)//2].strip()
+
 def loadFile():
     #file = open("dictionary.txt", "r")
     file = open("dict-5.txt", "r")
@@ -36,16 +50,16 @@ def getEmoji(c):
     c = c.replace("X", "⬜")
     return c
 
-def guessAll(wordList):
+def guessAll(wordList, strat="FIRST"):
     file = open("results.csv", "w")
     for w in wordList:
         w = w.strip()
-        guessCount = guessSequence(w)
+        guessCount = guessSequence(w, strat)
         file.write(w + "," + str(guessCount) + "\n")
         logging.info("Guessed word %s in %d guesses.", w, guessCount)
 
 
-def guessSequence(answer):
+def guessSequence(answer, strat="FIRST"):
 
     frequencyTable = {}
     exactMatches = exactMatches = emptyExactMatches(len(answer))
@@ -55,7 +69,7 @@ def guessSequence(answer):
     guess = ""
     
     while guessCount < maxGuesses and guess != answer:
-        guess = runStrategy(frequencyTable, exactMatches, currentList)
+        guess = runStrategy(frequencyTable, exactMatches, currentList, strat)
         result = processGuess(guess, answer)
         logging.debug( answer + " | " + guess + " -> " + str(getEmoji(result)))
         guessCount += 1
@@ -172,12 +186,6 @@ def buildExactMatchesRegex(exactMatches):
     return re.compile(regex)
     pass
 
-def runStrategy(frequencyTable, exactMatches, currentList):
-    if (len(currentList) > 0):
-        return currentList[0].strip()
-    else:
-        raise ValidationError("No words left to suggest.")
-
 def interactiveGame(wordList):
 
     wordLength = 0
@@ -240,12 +248,12 @@ logging.info('Loaded %d words', len(wordList))
 #interactiveGame(wordList)
 
 # uncomment to run the entire wordlist into a file
-#guessAll(wordList)
+# guessAll(wordList, "MID")
 
 # uncomment to look at a single word
 logging.getLogger().setLevel(logging.DEBUG)
-w = "CAVES"
-guessCount = guessSequence(w)
+w = "BANAL"
+guessCount = guessSequence(w, "FIRST")
 logging.info("Guessed word %s in %d guesses.", w, guessCount)
 
 
