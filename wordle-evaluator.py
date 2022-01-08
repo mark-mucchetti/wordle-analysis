@@ -38,11 +38,24 @@ def runStrategy(frequencyTable, exactMatches, currentList, strat="FIRST"):
 
     if strat == "MID":
         return currentList[len(currentList)//2].strip()
+    
+    if strat == "RAISE":
+        if frequencyTable == {}:
+            return "RAISE"
+        return currentList[0].strip()
 
-def loadFile():
-    #file = open("dictionary.txt", "r")
-    file = open("dict-5.txt", "r")
-    return file.readlines()
+    if strat == "RAISE-MID":
+        if frequencyTable == {}:
+            return "RAISE"
+        return currentList[len(currentList)//2].strip()
+
+def loadFile(name="DICT-5"):
+    file = "dict-5.txt"
+    if name=="W-ANS": file = "wordle-answers.txt"
+    if name=="W-GUESS": file = "wordle-guesses.txt"
+    if name=="ALL": file = "dictionary.txt"
+    f = open(file, "r")
+    return f.readlines()
 
 def getEmoji(c):
     c = c.replace("G", "🟩")
@@ -131,26 +144,39 @@ def processGuess(guess, answer):
 
     resultList = []
     for j in range(0, len(answer)): resultList.append("X")
+    guessFreq = {}
+    answerFreq = {}
 
-    for j in range(0, len(answer)):
-        #logging.debug(answer[j] + " -> " + guess[j])
-        #logging.debug(guess.count(answer[j]))
-        if answer[j] == guess[j]:
+    # really should just cache the frequency tables
+    for a in answer:
+        answerFreq[a] = answerFreq.setdefault(a, 0) + 1
+    for g in guess:
+        guessFreq[g] = guessFreq.setdefault(g, 0) + 1
+    #print("guess table  " + str(guessFreq))
+    #print("answer table " + str(answerFreq))
+
+    s = set(answerFreq).intersection(set(guessFreq))
+    #print ("intersection " + str(s))
+
+    for m in s:
+        #print(m + " ", end=" ")
+        # each M is a letter that will be Y or G
+        gloc = [i for i in range(len(guess)) if guess.startswith(m, i)]
+        aloc = [i for i in range(len(answer)) if answer.startswith(m, i)]
+        green = set(gloc).intersection(aloc)
+        #print ("gloc :" + str(gloc))
+        for j in green:
             resultList[j] = "G"
-        elif guess.count(answer[j]) > 0:
-            res = [i for i in range(len(guess)) if guess.startswith(answer[j], i)]
-            # r is all indexes of the guess that match this letter in any position
-            # we only want to update positions that are not "G", but we always want to go
-            # until we find any to make them "Y"
-            max = answer.count(answer[j])
-            for r in res:
-                i = guess[r]
-                if resultList[r] != "G": 
-                    resultList[r] = "Y"
-                max -= 1
-                if max == 0: break
-                        
-        #logging.debug("".join(resultList))
+            gloc.remove(j)
+        answerFreq[m] = answerFreq[m] - len(green)
+        #print (str(resultList))
+        #print (str(answerFreq[m]) + " left to place")
+        #print(str(gloc) + " possibilities")
+        for i in range(0, answerFreq[m]):
+            if i < len(gloc):
+                k = gloc[i]
+                #print("placing Y at " + str(k))
+                resultList[k] = "Y"
 
     return "".join(resultList)
 
@@ -241,19 +267,25 @@ def interactiveGame(wordList):
         logging.info("Try %s", solverGuess)
 
 # load whatever wordlist
-wordList = loadFile()
+wordList = loadFile("W-ANS")
 logging.info('Loaded %d words', len(wordList))
 
 # uncomment to play directly
 #interactiveGame(wordList)
 
 # uncomment to run the entire wordlist into a file
-# guessAll(wordList, "MID")
+guessAll(wordList, "RAISE-MID")
 
 # uncomment to look at a single word
-logging.getLogger().setLevel(logging.DEBUG)
-w = "BANAL"
-guessCount = guessSequence(w, "FIRST")
-logging.info("Guessed word %s in %d guesses.", w, guessCount)
+#logging.getLogger().setLevel(logging.DEBUG)
+#w = "POWER"
+#guessCount = guessSequence(w, "RAISE")
+#logging.info("Guessed word %s in %d guesses.", w, guessCount)
+
+#guess = "EQCEE"
+#answer = "ZILLS"
+#print(guess)
+#print(answer)
+#print(getEmoji(processGuess(guess, answer)))
 
 
