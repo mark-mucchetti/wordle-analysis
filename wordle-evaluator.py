@@ -25,7 +25,7 @@ wordList = []
 # logging configuration
 logging.basicConfig(stream=sys.stderr, level=logging.INFO)
 
-def runStrategy(frequencyTable, exactMatches, currentList, strat="FIRST"):
+def runStrategy(frequencyTable, exactMatches, currentList, strat="FIRST", firstWord="RAISE"):
 
     if (len(currentList) == 0):
         raise ValidationError("No words left to suggest.")
@@ -44,9 +44,9 @@ def runStrategy(frequencyTable, exactMatches, currentList, strat="FIRST"):
             return "RAISE"
         return currentList[0].strip()
 
-    if strat == "RAISE-MID":
+    if strat == "EX-MID":
         if frequencyTable == {}:
-            return "RAISE"
+            return firstWord
         return currentList[len(currentList)//2].strip()
 
 def loadFile(name="DICT-5"):
@@ -63,32 +63,54 @@ def getEmoji(c):
     c = c.replace("X", "⬜")
     return c
 
-def guessAll(wordList, strat="FIRST"):
+def runGamut(wordList):
+    file = open("gamut.csv", "w")
+
+    for guess in wordList:
+        logging.info(guess.rstrip())
+        for answer in wordList:
+
+            frequencyTable = {}
+            exactMatches = emptyExactMatches(5)
+            currentList = wordList
+
+            guess = guess.rstrip()
+            answer = answer.rstrip()            
+            result = processGuess(guess, answer)
+
+            (frequencyTable, exactMatches) = updateFrequencyTable(frequencyTable, exactMatches, guess, result)
+            currentList = filterWords(frequencyTable, exactMatches, currentList)
+
+            file.write(guess + "," + answer + "," + result + "," + str(len(currentList)) + "\n")
+
+def guessAll(wordList, strat="FIRST", firstWord="RAISE"):
     file = open("results.csv", "w")
     for w in wordList:
         w = w.strip()
-        guessCount = guessSequence(w, strat)
+        guessCount = guessSequence(w, strat, firstWord)
         file.write(w + "," + str(guessCount) + "\n")
         logging.info("Guessed word %s in %d guesses.", w, guessCount)
 
 
-def guessSequence(answer, strat="FIRST"):
+def guessSequence(answer, strat="FIRST", firstWord="RAISE"):
 
     frequencyTable = {}
-    exactMatches = exactMatches = emptyExactMatches(len(answer))
+    exactMatches = emptyExactMatches(len(answer))
     currentList = wordList
     maxGuesses = 20
     guessCount = 0
     guess = ""
     
     while guessCount < maxGuesses and guess != answer:
-        guess = runStrategy(frequencyTable, exactMatches, currentList, strat)
+        guess = runStrategy(frequencyTable, exactMatches, currentList, strat, firstWord)
         result = processGuess(guess, answer)
-        logging.debug( answer + " | " + guess + " -> " + str(getEmoji(result)))
         guessCount += 1
 
         (frequencyTable, exactMatches) = updateFrequencyTable(frequencyTable, exactMatches, guess, result)
         currentList = filterWords(frequencyTable, exactMatches, currentList)
+
+        logging.debug( answer + " | " + guess + " -> " + str(getEmoji(result)) + " : " + str(len(currentList)) + " words remain")
+
     
     return guessCount
 
@@ -270,22 +292,28 @@ def interactiveGame(wordList):
 wordList = loadFile("W-ANS")
 logging.info('Loaded %d words', len(wordList))
 
+guessList = loadFile("W-GUESS")
+logging.info('Loaded %d guesses', len(guessList))
+
 # uncomment to play directly
-#interactiveGame(wordList)
+interactiveGame(wordList)
 
 # uncomment to run the entire wordlist into a file
-guessAll(wordList, "RAISE-MID")
+#guessAll(wordList, "EX-MID", "GAFFE")
 
 # uncomment to look at a single word
 #logging.getLogger().setLevel(logging.DEBUG)
-#w = "POWER"
-#guessCount = guessSequence(w, "RAISE")
-#logging.info("Guessed word %s in %d guesses.", w, guessCount)
+#answer = "NYMPH"
+#firstWord = "MAJOR"
+#guessCount = guessSequence(answer, "EX-MID", firstWord)
+#logging.info("Guessed word %s in %d guesses.", answer, guessCount)
 
 #guess = "EQCEE"
 #answer = "ZILLS"
 #print(guess)
 #print(answer)
 #print(getEmoji(processGuess(guess, answer)))
+
+#runGamut(wordList)
 
 
