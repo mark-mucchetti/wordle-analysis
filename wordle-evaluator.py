@@ -20,6 +20,7 @@
 import logging, sys
 import re
 import string
+import random
 wordList = []
 
 # logging configuration
@@ -234,6 +235,87 @@ def buildExactMatchesRegex(exactMatches):
     return re.compile(regex)
     pass
 
+def playWordle(guessList, wordList, hardMode=False, answer=""):
+    historyList = []
+    frequencyTable = {}
+    exactMatches = []
+    init = False
+    maxGuesses = 6
+    guessCount = 0
+    guess = ""
+    wordNum = "?"
+    prevOptions = 0
+
+    currentList = wordList
+    if answer == "":
+        wordNum = random.randint(1, len(wordList))
+        answer = wordList[wordNum].strip().upper()
+        wordNum = str(wordNum+1)
+        prevOptions = len(wordList)
+    
+    wordLength = len(answer)
+    logging.info("Answer has {} letters.".format(len(answer)))
+        
+    while guess != answer and guessCount < maxGuesses:
+        guessCount += 1
+        badGuess = True
+        while badGuess:
+            guess = input("Guess {}: ".format(guessCount)).upper().strip()
+            # the len=5 thing is temporary to allow for longer games without the appropriate filtered dictionaries yet
+            if (guess.strip()+'\n' in guessList) or ((len(guess) == len(answer) and len(answer) != 5)):
+                badGuess = False
+            elif hardMode and (guess not in currentList):
+                print("Word does not use all available information, try again")
+            else:
+                print("Invalid word, try again")
+        result = processGuess(guess, answer)
+        
+        if not init:
+            exactMatches = emptyExactMatches(wordLength)
+            init = True
+
+        (frequencyTable, exactMatches) = updateFrequencyTable(frequencyTable, exactMatches, guess, result)
+
+        historyList.append((guess,result,len(currentList)))
+
+        # filter the wordlist with this state
+        curLength = prevOptions = len(currentList)
+        currentList = filterWords(frequencyTable, exactMatches, currentList)
+
+ 
+
+
+        print(getEmoji(result))
+        
+    if guess == answer:
+        print(getWordlePraise(guessCount), end=" ")
+    else:
+        print("The word was " + answer + ". ", end="")
+        prevOptions = len(currentList)
+
+        
+    print("You had " + str(prevOptions) + " valid word(s) remaining.")
+
+    shareResult(answer, historyList, wordNum, maxGuesses)
+
+def getWordlePraise(guessCount):
+    wordlePraise = ["Genius!", "Magnificent!", "Impressive.", "Splendid.", "Great.", "Nice."]
+    if guessCount <= len(wordlePraise):
+        # TODO work for higher guess counts
+        return wordlePraise[guessCount-1]+" "
+    else:
+        return ""
+
+def shareResult(answer, historyList, wordNum, maxGuesses=6):
+    guessPrint = "X"
+    if len(historyList) <= maxGuesses:
+        guessPrint = len(historyList)
+    print("\nW{}rdle {} {}/{}".format("ø"*(len(answer)-4), wordNum, guessPrint, maxGuesses))
+    for l in historyList:
+        print(getEmoji(l[1]) + " " + str(l[2]))       
+    print("\n")
+
+
 def interactiveGame(wordList):
 
     wordLength = 0
@@ -295,8 +377,14 @@ logging.info('Loaded %d words', len(wordList))
 guessList = loadFile("W-GUESS")
 logging.info('Loaded %d guesses', len(guessList))
 
+freqList = loadFile("wordle-g-freq.csv")
+
 # uncomment to play directly
-interactiveGame(wordList)
+# interactiveGame(wordList)
+
+# play wordle
+#playWordle(guessList, wordList, True, "")
+
 
 # uncomment to run the entire wordlist into a file
 #guessAll(wordList, "EX-MID", "GAFFE")
